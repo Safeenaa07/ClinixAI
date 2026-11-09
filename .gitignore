@@ -1,0 +1,14 @@
+backend/data/
+backend/models/*.joblib
+.venv/
+__pycache__/
+*.pt
+*.pth
+*.db
+*.sqlite
+*.sqlite3
+.env
+.env.*
+!.env.example
+*.log
+backend/uploads/

@@ -1,0 +1,17 @@
+services:
+  clinix:
+    build:
+      context: .
+      args:
+        WITH_MODEL: "1"      # set "0" for a small image (CT/MRI/X-ray models then need CLINIX_MOCK_MODEL=1)
+    ports:
+      - "8000:8000"
+    environment:
+      CLINIX_MOCK_MODEL: "0"
+      # CLINIX_TEMPERATURE: "1.7"   # set after running evaluation/fit_temperature.py
+      # GROQ_API_KEY: ""            # optional: LLM rewording of reports
+    volumes:
+      - clinix-data:/app/backend/data
+      - ./backend/models:/app/backend/models
+volumes:
+  clinix-data:

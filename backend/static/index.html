@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CLINIX-AI</title>
+<style>
+:root{--ink:#16222b;--muted:#5b6b76;--line:#d5dde2;--accent:#0b6e75;--bad:#a3322a;--warn:#8a5a00;--bg:#f7f9fa}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:system-ui,"Segoe UI",sans-serif;line-height:1.5}
+main{max-width:860px;margin:0 auto;padding:24px 20px 64px}
+h1{margin:0;font-size:26px} h2{font-size:17px;margin:0 0 6px}
+.sub{color:var(--muted);margin:2px 0 14px}
+section{background:#fff;border:1px solid var(--line);border-radius:6px;padding:16px;margin-bottom:14px;display:grid;gap:10px}
+label{display:grid;gap:4px;font-weight:600}
+input,select,textarea{font:inherit;padding:7px;border:1px solid var(--line);border-radius:4px;background:#fff;width:100%}
+textarea{min-height:230px;font-family:ui-monospace,Consolas,monospace;font-size:13px}
+button{font:inherit;font-weight:600;padding:9px 13px;border:0;border-radius:4px;background:var(--accent);color:#fff;cursor:pointer}
+button.alt{background:#fff;color:var(--accent);border:1px solid var(--accent)}
+button.danger{background:var(--bad)}
+button:disabled{opacity:.5;cursor:not-allowed}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.grid2 img{width:100%;border:1px solid var(--line);border-radius:6px;background:#000}
+.cap{font-size:12px;color:var(--muted);margin:2px 0 0}
+.err{color:var(--bad);margin:0} .warn{color:var(--warn);font-weight:600;margin:0}
+.banner{padding:8px 12px;border-radius:4px;font-weight:600;background:#fdecea;color:var(--bad)}
+table{border-collapse:collapse;width:100%;font-size:14px} td,th{padding:6px 8px;border-top:1px solid var(--line);text-align:left}
+meter{width:100%;height:16px}
+[hidden]{display:none!important}
+@media(max-width:600px){.grid2{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<main>
+  <h1>CLINIX-AI</h1>
+  <p class="sub">Adaptive medical scan analysis for doctors. Research prototype, not a diagnosis.</p>
+  <div id="sysBanner" class="banner" hidden></div>
+
+  <section id="loginBox">
+    <h2>Log in</h2>
+    <label>Username <input id="user" autocomplete="username"></label>
+    <label>Password <input id="pass" type="password" autocomplete="current-password"></label>
+    <div class="row"><button id="loginBtn">Log in</button></div>
+    <p class="cap">Demo accounts: dr_junior or dr_specialist, password clinix123.</p>
+    <p id="loginErr" class="err" hidden></p>
+  </section>
+
+  <div id="app" hidden>
+    <div class="row" style="justify-content:space-between;margin-bottom:8px">
+      <span id="who" class="cap"></span><button class="alt" id="logout">Log out</button>
+    </div>
+
+    <section>
+      <h2>1. Upload scan</h2>
+      <div class="grid2">
+        <label>Scan type
+          <select id="scanType"><option value="xray">X-ray</option><option value="ct">CT</option><option value="mri">MRI</option></select>
+        </label>
+        <label>Report level
+          <select id="level">
+            <option value="">My default</option><option value="junior">Junior doctor (detailed)</option>
+            <option value="specialist">Specialist (concise)</option><option value="concise">Concise</option>
+            <option value="standard">Standard</option><option value="detailed">Detailed</option>
+          </select>
+        </label>
+      </div>
+      <label>Scan file (JPG, PNG or DICOM) <input id="file" type="file" accept=".jpg,.jpeg,.png,.dcm"></label>
+      <div class="row"><button id="run" disabled>Check and analyse scan</button></div>
+      <p id="error" class="err" hidden></p>
+    </section>
+
+    <section id="qualityBox" hidden>
+      <h2 id="qualityTitle"></h2>
+      <p id="qualityReason" hidden></p>
+      <table><tbody id="qualityRows"></tbody></table>
+    </section>
+
+    <section id="analysisBox" hidden>
+      <h2>2. AI analysis</h2>
+      <p class="cap" id="modelLine"></p>
+      <div id="critical" class="banner" hidden></div>
+      <div><b id="topLine"></b></div>
+      <div><span class="cap">Reliability</span>
+        <meter id="relMeter" min="0" max="1" low="0.6" high="0.8" optimum="1"></meter>
+        <span id="relText" class="cap"></span></div>
+      <p id="lowRel" class="warn" hidden>Reliability is low. Review the image directly.</p>
+      <div class="grid2">
+        <div><img id="imgOrig" alt="Scan"><p class="cap">Uploaded scan</p></div>
+        <div><img id="imgHeat" alt="Heatmap"><p class="cap" id="heatCap"></p></div>
+      </div>
+      <table><thead><tr><th>Finding</th><th>Score</th><th>Status</th><th>Reliability</th><th>Reference</th></tr></thead>
+        <tbody id="findRows"></tbody></table>
+    </section>
+
+    <section id="reportBox" hidden>
+      <h2>3. Report (editable draft)</h2>
+      <div class="row">
+        <select id="regenLevel" style="width:auto">
+          <option value="junior">Junior doctor</option><option value="specialist">Specialist</option>
+          <option value="concise">Concise</option><option value="standard">Standard</option><option value="detailed">Detailed</option>
+        </select>
+        <select id="optEvidence" style="width:auto" title="Medical evidence">
+          <option value="">Evidence: auto</option><option value="1">Evidence: on</option><option value="0">Evidence: off</option>
+        </select>
+        <select id="optGuidance" style="width:auto" title="Clinical guidance">
+          <option value="">Guidance: auto</option><option value="1">Guidance: on</option><option value="0">Guidance: off</option>
+        </select>
+        <button class="alt" id="regen">Regenerate</button>
+      </div>
+      <p class="cap" id="reportNote"></p>
+      <textarea id="reportText"></textarea>
+      <label>Reason (needed to reject or challenge)<input id="reason"></label>
+      <div class="row">
+        <button id="accept">Accept</button>
+        <button class="alt" id="edit">Save my edit</button>
+        <button class="danger" id="reject">Reject</button>
+      </div>
+      <div class="row">
+        <select id="challengeFinding" style="width:auto"></select>
+        <button class="alt" id="challenge">Challenge this finding</button>
+      </div>
+      <p id="decisionMsg" class="cap" hidden></p>
+      <div id="challengeOut" hidden></div>
+    </section>
+
+    <section>
+      <h2>Your history and decision summary</h2>
+      <p class="cap" id="analytics"></p>
+      <table><thead><tr><th>Time</th><th>Scan</th><th>Level</th><th>Last decision</th></tr></thead>
+        <tbody id="histRows"></tbody></table>
+    </section>
+  </div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let token = null, analysisId = null;
+
+async function api(path, opts = {}) {
+  opts.headers = Object.assign({}, opts.headers || {}, token ? {"X-Token": token} : {});
+  const r = await fetch(path, opts);
+  let body = null; try { body = await r.json(); } catch (e) {}
+  if (!r.ok) {
+    const d = body && body.detail;
+    throw new Error(typeof d === "string" ? d : (d ? JSON.stringify(d) : "Request failed (" + r.status + ")"));
+  }
+  return body;
+}
+const post = (p, o) => api(p, {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(o)});
+const show = (el, on) => { el.hidden = !on; };
+const setErr = (m) => { $("error").textContent = m; show($("error"), !!m); };
+const pct = (p) => Math.round(p * 100) + "%";
+function cell(tr, text) { const td = document.createElement("td"); td.textContent = text; tr.appendChild(td); }
+
+$("loginBtn").onclick = async () => {
+  try {
+    const r = await post("/api/login", {username: $("user").value, password: $("pass").value});
+    token = r.token; $("who").textContent = "Signed in as " + r.user.username + " (" + r.user.level + ")";
+    show($("loginBox"), false); show($("app"), true); show($("loginErr"), false);
+    const s = await api("/api/system");
+    for (const o of $("scanType").options) {
+      if (!s.models_available[o.value]) o.textContent = o.textContent.replace(/ \(no model.*$/, "") + " (no model installed yet)";
+    }
+    if (s.mock_model) { $("sysBanner").textContent = "MOCK MODEL: results are FAKE, for pipeline testing only."; show($("sysBanner"), true); }
+    loadHistory();
+  } catch (e) { $("loginErr").textContent = e.message; show($("loginErr"), true); }
+};
+$("logout").onclick = () => location.reload();
+$("file").onchange = () => { $("run").disabled = !$("file").files[0]; setErr(""); show($("qualityBox"), false); show($("analysisBox"), false); show($("reportBox"), false); };
+
+$("run").onclick = async () => {
+  const f = $("file").files[0]; if (!f) return;
+  $("run").disabled = true; $("run").textContent = "Working…"; setErr("");
+  try {
+    const fd = new FormData(); fd.append("scan_type", $("scanType").value); fd.append("file", f);
+    const up = await api("/api/scans/upload", {method: "POST", body: fd});
+    renderQuality(up.quality);
+    show($("analysisBox"), false); show($("reportBox"), false);
+    if (!up.quality.passed) return;
+    const fd2 = new FormData(); fd2.append("scan_id", up.scan_id);
+    if ($("level").value) fd2.append("level", $("level").value);
+    const a = await api("/api/scans/analyze", {method: "POST", body: fd2});
+    if (a.status !== "ok") { setErr(a.message); return; }
+    renderAnalysis(a); loadHistory();
+  } catch (e) { setErr(e.message); }
+  finally { $("run").disabled = false; $("run").textContent = "Check and analyse scan"; }
+};
+
+function renderQuality(q) {
+  $("qualityTitle").textContent = "Scan quality: " + (q.passed ? "Passed" : "Stopped for review");
+  $("qualityReason").textContent = q.reason; $("qualityReason").className = q.passed ? "" : "err"; show($("qualityReason"), !!q.reason);
+  const rows = $("qualityRows"); rows.innerHTML = "";
+  for (const [k, c] of Object.entries(q.checks)) {
+    const tr = document.createElement("tr"); cell(tr, k); cell(tr, String(c.value)); cell(tr, c.ok ? "OK" : "Problem"); rows.appendChild(tr);
+  }
+  if (q.ml) { const tr = document.createElement("tr"); cell(tr, "ML quality model"); cell(tr, "p(good) " + q.ml.p_good); cell(tr, q.ml.outlier ? "Unfamiliar" : "OK"); rows.appendChild(tr); }
+  show($("qualityBox"), true);
+}
+
+function renderAnalysis(a) {
+  analysisId = a.analysis_id;
+  const s = a.result.summary, rel = s.reliability;
+  $("modelLine").textContent = "Model: " + a.result.model.name + (rel.calibrated ? "" : " | probabilities uncalibrated");
+  const crit = s.findings.filter(f => f.status === "detected" && ["Pneumothorax"].includes(f.label));
+  $("critical").textContent = crit.length ? (rel.level === "low" ? "Possible " + crit[0].label + " at LOW confidence (" + pct(crit[0].prob) + "). Check the image yourself." : "Review first: possible " + crit[0].label + " (" + pct(crit[0].prob) + ")") : "";
+  show($("critical"), crit.length > 0);
+  $("topLine").textContent = s.findings.length
+    ? "Main finding: " + s.findings[0].label.replace(/_/g, " ") + " (" + pct(s.findings[0].prob) + ", " + s.findings[0].status + ")"
+    : "No finding above the review threshold";
+  $("relMeter").value = rel.score; $("relText").textContent = " " + rel.score.toFixed(2) + " (" + rel.level + ")";
+  show($("lowRel"), rel.level === "low");
+  $("imgOrig").src = a.original;
+  if (a.heatmap) { $("imgHeat").src = a.heatmap; $("heatCap").textContent = "Where the model looked for: " + a.heatmap_label.replace(/_/g, " "); show($("imgHeat"), true); }
+  else { show($("imgHeat"), false); $("heatCap").textContent = a.heatmap_note || ""; }
+  const rows = $("findRows"); rows.innerHTML = ""; const sel = $("challengeFinding"); sel.innerHTML = "";
+  s.all.slice(0, 8).forEach(r => {
+    const tr = document.createElement("tr");
+    cell(tr, r.label.replace(/_/g, " ")); cell(tr, pct(r.prob)); cell(tr, r.status.replace("_", " "));
+    cell(tr, r.reliability.toFixed(2)); const ev = a.result.evidence[r.label];
+    cell(tr, ev ? (ev.supported ? "supported" : "no reference") : "-"); rows.appendChild(tr);
+    const o = document.createElement("option"); o.value = r.label; o.textContent = r.label.replace(/_/g, " "); sel.appendChild(o);
+  });
+  setReport(a.report); show($("analysisBox"), true); show($("reportBox"), true);
+  $("decisionMsg").hidden = true; $("challengeOut").hidden = true; $("reason").value = "";
+}
+
+function setReport(r) {
+  $("reportText").value = r.text;
+  $("reportNote").textContent = "Level used: " + r.level_used + (r.forced_upgrade ? " (raised because reliability is low)" : "") + " | built by " + r.generated_by;
+}
+
+$("regen").onclick = async () => {
+  const tri = (id) => $(id).value === "" ? null : $(id).value === "1";
+  try { setReport(await post("/api/reports/generate", {analysis_id: analysisId, level: $("regenLevel").value, evidence: tri("optEvidence"), guidance: tri("optGuidance")})); }
+  catch (e) { msg(e.message, true); }
+};
+function msg(t, bad) { const m = $("decisionMsg"); m.textContent = t; m.className = bad ? "err" : "cap"; show(m, true); }
+async function decide(action) {
+  try {
+    await post("/api/reports/review", {analysis_id: analysisId, action, final_text: $("reportText").value, reason: $("reason").value});
+    msg("Saved: " + action, false); loadHistory();
+  } catch (e) { msg(e.message, true); }
+}
+$("accept").onclick = () => decide("accept");
+$("edit").onclick = () => decide("edit");
+$("reject").onclick = () => decide("reject");
+$("challenge").onclick = async () => {
+  try {
+    const r = await post("/api/reports/challenge", {analysis_id: analysisId, finding: $("challengeFinding").value, reason: $("reason").value});
+    const box = $("challengeOut"); box.innerHTML = "";
+    const p = document.createElement("p"); p.textContent = r.message; box.appendChild(p);
+    const m = document.createElement("p"); m.className = "cap";
+    m.textContent = "Model view: " + r.model_view.label.replace(/_/g, " ") + " " + pct(r.model_view.prob) + ", reliability " + r.model_view.reliability.toFixed(2); box.appendChild(m);
+    r.evidence.forEach(e => { const d = document.createElement("p"); d.textContent = e.title + ": " + e.what + " " + e.matters + " [" + e.source + "]"; box.appendChild(d); });
+    show(box, true); msg("Challenge recorded", false); loadHistory();
+  } catch (e) { msg(e.message, true); }
+};
+
+async function loadHistory() {
+  try {
+    const h = await api("/api/reports/history"), an = await api("/api/analytics/decisions");
+    const d = an.decisions; $("analytics").textContent = "All users: " + an.analyses + " analyses | accept " + (d.accept || 0) + ", edit " + (d.edit || 0) + ", challenge " + (d.challenge || 0) + ", reject " + (d.reject || 0);
+    const rows = $("histRows"); rows.innerHTML = "";
+    h.forEach(x => { const tr = document.createElement("tr"); cell(tr, new Date(x.created * 1000).toLocaleString()); cell(tr, x.scan_type); cell(tr, x.level); cell(tr, x.last_action || "none yet"); rows.appendChild(tr); });
+  } catch (e) {}
+}
+</script>
+</body>
+</html>

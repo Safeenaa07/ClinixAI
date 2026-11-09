@@ -1,0 +1,6 @@
+# Real X-ray model. Install after requirements.txt (large download, CPU is enough):
+#   python -m pip install torch torchvision --index-url https://download.pytorch.org/whl/cpu
+#   python -m pip install torchxrayvision
+torch
+torchvision
+torchxrayvision
